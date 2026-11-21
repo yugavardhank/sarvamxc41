@@ -335,6 +335,9 @@ async function renderCustomers() {
 
   if (customers.length === 0) { grid.innerHTML = '<div class="empty-state">No customers yet.</div>'; return; }
 
+  const isMadhumitha = customer => /^madhumitha(?:\s|$)/i.test((customer.name || '').trim());
+  customers.sort((a, b) => Number(isMadhumitha(b)) - Number(isMadhumitha(a)));
+
   grid.innerHTML = customers.map(c => {
     const p = c.profile;
     const flags = [
