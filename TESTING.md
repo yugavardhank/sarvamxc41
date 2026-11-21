@@ -50,7 +50,36 @@ restart it.
 - Check the **dashboard** after a call - the order should show up there
   with the right status
 
-## 5. Original data source
+## 5. API keys (private repo only - do not fork/share outside the team)
+
+These are live sandbox/test credentials, already active in `.env` on the
+host machine. You only need these if you're running your own copy of the
+backend; testing through the links in section 1 needs none of this.
+
+```
+SARVAM_API_KEY=sk_ch1p5kml_vQNFxIlElUU1WTJZofrm4X7W
+SARVAM_VOICE_AGENTS_API_KEY=sk_samvaad_1dlq880g_8GNLhCgpnPLmbiH74AALRikx
+SARVAM_ORG_ID=01a1f52f-7f9f-7eaf-93b3-036c7203cf15
+SARVAM_WORKSPACE_ID=01a1f52f-7fa8-7b6c-9c1d-ee2014d5852b
+SARVAM_APP_ID=bada-tokri-9db1400b-f203
+SARVAM_APP_VERSION=2
+SARVAM_CONNECTION_ID=861bfacd-1b-dd91b1ef-a3df
+SARVAM_AGENT_PHONE_NUMBER=+918064264144
+CASHFREE_APP_ID=TEST113684289afa2729fa10c5e5060a82486311
+CASHFREE_SECRET=cfsk_ma_test_2df75cb228b1b36a769fa7e680d22968_3f037b77
+CASHFREE_ENV=sandbox
+PUBLIC_BASE_URL=https://ceremony-gates-protein-merger.trycloudflare.com
+TOOL_SHARED_SECRET=2KrfjmyYkNaYnj7h-36jXDedpRExb3BP
+DB_PATH=tokri.db
+MOCK_SARVAM=0
+MOCK_CASHFREE=0
+```
+
+Cashfree keys are **sandbox-only** (no real money). Treat `TOOL_SHARED_SECRET`
+as the password protecting the publicly-tunneled backend - don't post it
+anywhere outside this private repo.
+
+## 6. Original data source
 
 The seed data (customers + inventory) came from `tokri_Database.xlsx`.
 That spreadsheet isn't needed for testing - it's already loaded into the
