@@ -445,7 +445,7 @@ async function renderOrders() {
       ? `${fmtMoney(o.pay_now)}${o.outstanding_new ? ' / ' + fmtMoney(o.outstanding_new) + ' acct' : ''}`
       : '—';
     const linkCell = o.link_url
-      ? `<a href="${escapeHtml(o.link_url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:11.5px;">Open payment link</a>`
+      ? `<a href="${escapeHtml(o.link_url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:11.5px;">Open payment link</a><div class="btn-row"><a class="btn primary sm" href="${escapeHtml(o.link_url)}" target="_blank" rel="noopener" style="text-decoration:none;">Pay now</a></div>`
       : '';
     const action = o.status === 'AWAITING_PAYMENT'
       ? `<button class="btn good sm" data-mark-paid="${o.id}">Mark paid (demo)</button>`
@@ -655,6 +655,9 @@ async function pay(paymentChoice) {
     });
     let html = escapeHtml(result.reply_text);
     if (result.status === 'AWAITING_PAYMENT') {
+      if (result.link_url) {
+        html += `<div class="btn-row"><a class="btn primary sm" href="${escapeHtml(result.link_url)}" target="_blank" rel="noopener" style="text-decoration:none;">Pay now</a></div>`;
+      }
       html += `<div class="btn-row"><button class="btn good sm" id="mark-paid-btn">Mark as paid (demo)</button></div>`;
     }
     const bubble = pushCallBubble('in', html);
