@@ -38,7 +38,7 @@ def _normalize_phone(phone: str) -> str:
 
 
 def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id: int | None = None, customer_name: str | None = None) -> dict:
-    """Returns {"link_id": str, "link_url": str, "expires_at": str}.
+    """Returns link details and SMS request status (not a delivery receipt).
 
     Field shapes follow the Cashfree sandbox Create Payment Link API exactly
     (link_id alnum/hyphen/underscore max 50, link_expiry_time ISO with
@@ -48,9 +48,13 @@ def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id
     """
     link_id = f"tokri-{uuid.uuid4().hex[:12]}"
     expires_at = _expiry_iso()
+    sms_notification = {
+        "status": "mocked" if MOCK_CASHFREE else "requested",
+        "phone": _normalize_phone(customer_phone),
+    }
 
     if MOCK_CASHFREE:
-        return {"link_id": link_id, "link_url": f"https://payments-test.cashfree.com/links/{link_id}", "expires_at": expires_at}
+        return {"link_id": link_id, "link_url": f"https://payments-test.cashfree.com/links/{link_id}", "expires_at": expires_at, "sms_notification": sms_notification}
 
     body = {
         "link_id": link_id,
@@ -61,9 +65,8 @@ def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id
         "link_expiry_time": expires_at,
         "link_notes": {"order_id": str(order_id)} if order_id else {},
         "link_partial_payments": False,
-        # Actually deliver the link to the customer's phone, not just return
-        # the URL for us to display - an SMS is the one channel that needs
-        # no extra approval in Cashfree sandbox.
+        # Ask Cashfree to send this link to the saved customer mobile.
+        # API acceptance is not confirmation of handset delivery.
         "link_notify": {"send_sms": True, "send_email": False},
     }
     if PUBLIC_BASE_URL:
@@ -73,7 +76,7 @@ def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id
     if resp.status_code >= 400:
         raise RuntimeError(f"Cashfree create-link failed ({resp.status_code}): {resp.text}")
     response_body = resp.json()
-    return {"link_id": response_body["link_id"], "link_url": response_body["link_url"], "expires_at": expires_at}
+    return {"link_id": response_body["link_id"], "link_url": response_body["link_url"], "expires_at": expires_at, "sms_notification": sms_notification}
 
 
 def cancel_payment_link(link_id: str) -> None:

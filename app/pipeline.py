@@ -274,6 +274,7 @@ def apply_payment_plan(order_id: int, pay_now: int) -> dict:
     return {
         "status": "AWAITING_PAYMENT", "pay_now": pay_now, "wallet_applied": wallet_applied,
         "outstanding_new": outstanding_new, "link_url": link["link_url"], "reply_text": reply,
+        "sms_notification": link.get("sms_notification"),
     }
 
 

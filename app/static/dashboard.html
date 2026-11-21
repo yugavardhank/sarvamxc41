@@ -655,6 +655,13 @@ async function pay(paymentChoice) {
     });
     let html = escapeHtml(result.reply_text);
     if (result.status === 'AWAITING_PAYMENT') {
+      if (result.sms_notification) {
+        const sms = result.sms_notification;
+        const message = sms.status === 'mocked'
+          ? 'Demo mode: no SMS sent. Enable real Cashfree calls to send the payment link.'
+          : `Payment link SMS requested for ${sms.phone}. Delivery is handled by Cashfree.`;
+        html += `<div style="margin-top:8px;">${escapeHtml(message)}</div>`;
+      }
       if (result.link_url) {
         html += `<div class="btn-row"><a class="btn primary sm" href="${escapeHtml(result.link_url)}" target="_blank" rel="noopener" style="text-decoration:none;">Pay now</a></div>`;
       }
