@@ -18,14 +18,26 @@ Endpoint shapes originally followed the "Bhaav" negotiation-agent contract;
 granular /payment/plan and /payment/link are kept too for direct testing,
 but the voice tool should call the combined /payment/plan-and-link.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
+from app.config import TOOL_SHARED_SECRET
 from app.db import get_conn, log_event, now
 from app.pipeline import apply_payment_plan, mark_paid, min_pay_now_for, validate_payment_plan
 from app.services import catalog, negotiate, orders, policy
 
-router = APIRouter()
+
+def _require_tool_secret(x_tokri_secret: str | None = Header(default=None)) -> None:
+    """Every call here is reachable from the public internet once
+    PUBLIC_BASE_URL is live, so the voice-agent tool config must send this
+    header back on every tool call. Set TOOL_SHARED_SECRET to enable it;
+    left empty, this is a no-op (fine for local-only testing).
+    """
+    if TOOL_SHARED_SECRET and x_tokri_secret != TOOL_SHARED_SECRET:
+        raise HTTPException(status_code=401, detail="missing or invalid X-Tokri-Secret header")
+
+
+router = APIRouter(dependencies=[Depends(_require_tool_secret)])
 
 
 class SessionStartRequest(BaseModel):
