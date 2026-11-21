@@ -8,6 +8,8 @@ from app.services import cashfree, orders
 @pytest.mark.parametrize("phone", ["9876543210", "+91 98765-43210"])
 def test_real_link_requests_sms_to_customer_mobile(monkeypatch, phone):
     monkeypatch.setattr(cashfree, "MOCK_CASHFREE", False)
+    monkeypatch.setattr(cashfree, "CASHFREE_APP_ID", "synthetic-app-id")
+    monkeypatch.setattr(cashfree, "CASHFREE_SECRET", "synthetic-secret")
     requests = []
 
     def post(url, **kwargs):
@@ -43,3 +45,47 @@ def test_payment_uses_saved_customer_phone_and_returns_sms_status(fresh_db):
         "status": "mocked",
         "phone": cashfree._normalize_phone(orders.get_customer(7)["phone"]),
     }
+    assert "No SMS was sent" in result["reply_text"]
+
+
+def test_live_mode_without_credentials_fails_before_network(monkeypatch):
+    monkeypatch.setattr(cashfree, "MOCK_CASHFREE", False)
+    monkeypatch.setattr(cashfree, "CASHFREE_APP_ID", "")
+    monkeypatch.setattr(cashfree, "CASHFREE_SECRET", "")
+
+    def unexpected_post(*args, **kwargs):
+        pytest.fail("Missing credentials must be reported before an API request")
+
+    monkeypatch.setattr(cashfree.httpx, "post", unexpected_post)
+    with pytest.raises(RuntimeError, match="Missing Cashfree credentials"):
+        cashfree.create_payment_link(100, "9876543210", "Test payment")
+
+
+def test_payment_diagnostics_report_mock_without_exposing_secrets(monkeypatch):
+    from app.routes.dev import payment_status
+
+    monkeypatch.setattr(cashfree, "CASHFREE_APP_ID", "synthetic-app-id")
+    monkeypatch.setattr(cashfree, "CASHFREE_SECRET", "synthetic-secret")
+    result = payment_status()
+    assert result["mock"] is True
+    assert result["sms_enabled"] is False
+    assert "MCP server" in result["message"]
+    assert "synthetic-secret" not in str(result)
+    assert "synthetic-app-id" not in str(result)
+
+
+@pytest.mark.parametrize("combined", [True, False])
+def test_voice_payment_endpoints_include_mock_sms_status(fresh_db, combined):
+    from app.routes import relay
+
+    call = pipeline.start_call(7)
+    pipeline.handle_transcript(call["order_id"], "toor dal", "en-IN")
+    order_id = call["order_id"]
+    amount = orders.get_order(order_id)["total"]
+    if combined:
+        result = relay.payment_plan_and_link(relay.PlanAndLinkRequest(order_id=order_id, pay_now=amount))
+    else:
+        orders.set_payment_plan(order_id, amount, 0, 0)
+        result = relay.payment_link(relay.PaymentLinkRequest(order_id=order_id))
+    assert result["sms_notification"]["status"] == "mocked"
+    assert result["status"] == "AWAITING_PAYMENT"

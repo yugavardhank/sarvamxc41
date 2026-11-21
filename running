@@ -17,3 +17,39 @@ use the new URL it prints.
 Refreshing the browser does not pull new code from GitHub. The hosting
 computer must pull the latest code first. Restart the app after backend
 or .env changes.
+
+Checking payment SMS
+
+Open <your-dashboard-url>/api/payment-status to check the configuration on
+the computer actually hosting the dashboard. This never exposes API keys.
+MOCK_CASHFREE=1 generates fake links and sends no SMS. For real Cashfree
+requests, configure these in the hosting computer's private .env:
+
+   MOCK_CASHFREE=0
+   CASHFREE_APP_ID=<your Cashfree app ID>
+   CASHFREE_SECRET=<your Cashfree secret>
+   CASHFREE_ENV=sandbox
+
+Use credentials for the selected environment. Never commit the private
+.env. Restart BOTH the dashboard process and the separate MCP server after
+changing these settings: Sarvam calls the MCP server, which loads its own
+configuration. Restart it using its existing MCP_ALLOWED_HOST value:
+
+   MCP_ALLOWED_HOST=<your-existing-MCP-hostname> .venv-mcp/bin/python -m app.mcp_server
+
+The SMS goes to the customer's saved number. Cashfree accepting a request
+does not confirm delivery to the phone. Do not switch to production just
+to test SMS; production links can collect real payments.
+
+Payment records in Cashfree
+
+New order links include the Tokri order ID, order total, amount due now,
+wallet contribution, and outstanding balance in Cashfree's link notes.
+Cashfree collects only the amount due after the wallet contribution.
+
+POST /payment/sync with JSON {"order_id": <Tokri order ID>} to fetch the
+existing link's status from Cashfree and reconcile the local order. Include
+the same X-Tokri-Secret header used for the voice tools. Orders are confirmed
+only for matching, fully paid INR links. Cashfree's signed webhook continues
+to confirm paid links automatically when PUBLIC_BASE_URL is configured and
+reachable. The sync endpoint is a fallback if the webhook was missed.

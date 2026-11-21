@@ -25,6 +25,26 @@ LINK_EXPIRY_MINUTES = 30
 IST = timezone(timedelta(hours=5, minutes=30))
 
 
+def payment_configuration() -> dict:
+    """Safe diagnostics shared by the host's dashboard and voice backend."""
+    missing = [name for name, value in (
+        ("CASHFREE_APP_ID", CASHFREE_APP_ID), ("CASHFREE_SECRET", CASHFREE_SECRET)
+    ) if not value.strip()]
+    return {
+        "mock": MOCK_CASHFREE,
+        "environment": CASHFREE_ENV,
+        "sms_enabled": not MOCK_CASHFREE and not missing,
+        "missing_settings": missing,
+        "message": (
+            "SMS is disabled: MOCK_CASHFREE=1. Set MOCK_CASHFREE=0 and configure Cashfree credentials, then restart both the app and MCP server."
+            if MOCK_CASHFREE else
+            "Missing Cashfree credentials: " + ", ".join(missing)
+            if missing else
+            "Cashfree SMS is requested when a payment link is created. Handset delivery is not verified."
+        ),
+    }
+
+
 def _expiry_iso() -> str:
     return (datetime.now(IST) + timedelta(minutes=LINK_EXPIRY_MINUTES)).strftime("%Y-%m-%dT%H:%M:%S+05:30")
 
@@ -37,7 +57,7 @@ def _normalize_phone(phone: str) -> str:
     return digits[-10:] if len(digits) >= 10 else digits
 
 
-def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id: int | None = None, customer_name: str | None = None) -> dict:
+def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id: int | None = None, customer_name: str | None = None, payment_details: dict | None = None) -> dict:
     """Returns link details and SMS request status (not a delivery receipt).
 
     Field shapes follow the Cashfree sandbox Create Payment Link API exactly
@@ -56,6 +76,14 @@ def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id
     if MOCK_CASHFREE:
         return {"link_id": link_id, "link_url": f"https://payments-test.cashfree.com/links/{link_id}", "expires_at": expires_at, "sms_notification": sms_notification}
 
+    configuration = payment_configuration()
+    if configuration["missing_settings"]:
+        raise RuntimeError(configuration["message"])
+
+    notes = {"order_id": str(order_id)} if order_id else {}
+    for key in ("order_total", "pay_now", "wallet_applied", "outstanding_new"):
+        if payment_details and key in payment_details:
+            notes[key] = str(payment_details[key])
     body = {
         "link_id": link_id,
         "link_amount": amount,
@@ -63,7 +91,7 @@ def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id
         "link_purpose": purpose,
         "customer_details": {"customer_phone": _normalize_phone(customer_phone), "customer_name": customer_name or ""},
         "link_expiry_time": expires_at,
-        "link_notes": {"order_id": str(order_id)} if order_id else {},
+        "link_notes": notes,
         "link_partial_payments": False,
         # Ask Cashfree to send this link to the saved customer mobile.
         # API acceptance is not confirmation of handset delivery.
@@ -90,9 +118,15 @@ def cancel_payment_link(link_id: str) -> None:
 def get_payment_link_status(link_id: str) -> str:
     if MOCK_CASHFREE:
         return "ACTIVE"
+    return get_payment_link_details(link_id).get("link_status", "ACTIVE")
+
+
+def get_payment_link_details(link_id: str) -> dict:
+    if MOCK_CASHFREE:
+        return {"link_id": link_id, "link_status": "ACTIVE"}
     resp = httpx.get(f"{PG_BASE}/links/{link_id}", headers=PG_HEADERS, timeout=20)
     resp.raise_for_status()
-    return resp.json().get("link_status", "ACTIVE")
+    return resp.json()
 
 
 def verify_webhook_signature(timestamp: str, raw_body: bytes, signature: str) -> bool:

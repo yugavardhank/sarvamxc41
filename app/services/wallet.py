@@ -12,7 +12,8 @@ from app.services import cashfree, orders
 def create_topup(customer_id: int, amount: int) -> dict:
     customer = orders.get_customer(customer_id)
     link = cashfree.create_payment_link(
-        amount=amount, customer_phone=customer["phone"], purpose=f"Tokri wallet top-up for {customer['name']}"
+        amount=amount, customer_phone=customer["phone"], purpose=f"Tokri wallet top-up for {customer['name']}",
+        customer_name=customer["name"],
     )
     with get_conn() as conn:
         cur = conn.execute(

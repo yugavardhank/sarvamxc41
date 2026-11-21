@@ -162,6 +162,7 @@ def set_payment_and_link(order_id: int, pay_now: int) -> dict:
         "ok": True, "min_pay_now": validation["min_pay_now"], "pay_now": result["pay_now"],
         "outstanding": result["outstanding_new"], "wallet_applied": result["wallet_applied"],
         "link_url": result.get("link_url"), "status": result["status"], "error": None,
+        "sms_notification": result.get("sms_notification"),
     }
 
 

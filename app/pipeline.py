@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from app.db import log_event
 from app.services import cashfree, catalog, lists, negotiate, orders, policy, sarvam, wallet
 
@@ -237,12 +239,10 @@ def apply_payment_plan(order_id: int, pay_now: int) -> dict:
     wallet_applied = wallet.apply_wallet_to_payment(order["customer_id"], pay_now)
     link_amount = pay_now - wallet_applied
 
-    orders.set_payment_plan(order_id, pay_now, outstanding_new, wallet_applied)
-
-    if wallet_applied > 0:
-        orders.debit_wallet(order["customer_id"], wallet_applied)
-
     if link_amount <= 0:
+        orders.set_payment_plan(order_id, pay_now, outstanding_new, wallet_applied)
+        if wallet_applied > 0:
+            orders.debit_wallet(order["customer_id"], wallet_applied)
         if outstanding_new > 0:
             orders.add_outstanding(order["customer_id"], outstanding_new)
         _finalize_order(order_id, confirmed_now=pay_now > 0)
@@ -259,12 +259,23 @@ def apply_payment_plan(order_id: int, pay_now: int) -> dict:
         purpose=f"Tokri order #{order_id}",
         order_id=order_id,
         customer_name=customer["name"],
+        payment_details={
+            "order_total": total, "pay_now": pay_now,
+            "wallet_applied": wallet_applied, "outstanding_new": outstanding_new,
+        },
     )
+    orders.set_payment_plan(order_id, pay_now, outstanding_new, wallet_applied)
+    if wallet_applied > 0:
+        orders.debit_wallet(order["customer_id"], wallet_applied)
     orders.set_payment_link(order_id, link["link_id"], link["link_url"])
     orders.set_status(order_id, "AWAITING_PAYMENT")
     log_event("order_awaiting_payment", order["customer_id"], f"order={order_id} link={link['link_id']} amount={link_amount}")
 
-    reply = f"I've sent a payment link for Rs.{link_amount}."
+    sms = link.get("sms_notification", {})
+    if sms.get("status") == "mocked":
+        reply = f"I've created a demo payment link for Rs.{link_amount}. No SMS was sent because payments are in mock mode."
+    else:
+        reply = f"I've created a payment link for Rs.{link_amount} and requested SMS delivery to your saved mobile number."
     if wallet_applied > 0:
         reply += f" Rs.{wallet_applied} from your wallet already covered part of it."
     if outstanding_new > 0:
@@ -316,6 +327,35 @@ def cancel_order(order_id: int) -> dict:
     _cancel_active_link_if_any(order)
     orders.set_status(order_id, "CANCELLED")
     return {"status": "CANCELLED", "reply_text": "Okay, I've cancelled this order."}
+
+
+def sync_payment(order_id: int) -> dict:
+    """Reconcile an existing link; Cashfree remains the payment authority."""
+    order = orders.get_order(order_id)
+    if not order:
+        raise ValueError("order not found")
+    if not order["link_id"]:
+        return {"status": order["status"], "payment_status": None, "reply_text": "No Cashfree link exists for this order."}
+    details = cashfree.get_payment_link_details(order["link_id"])
+    payment_status = details.get("link_status")
+    if details.get("link_id") != order["link_id"]:
+        raise ValueError("Cashfree returned a different payment link")
+    if payment_status == "PAID":
+        expected = Decimal(str(order["pay_now"])) - Decimal(str(order["wallet_applied"]))
+        try:
+            valid_amount = (
+                Decimal(str(details.get("link_amount"))) == expected
+                and Decimal(str(details.get("link_amount_paid"))) == expected
+            )
+        except InvalidOperation:
+            valid_amount = False
+        if details.get("link_currency") != "INR" or not valid_amount:
+            raise ValueError("Cashfree payment amount or currency does not match this order")
+        if order["status"] == "AWAITING_PAYMENT":
+            mark_paid(order_id)
+    status = orders.get_order(order_id)["status"]
+    log_event("cashfree_payment_sync", order["customer_id"], f"order={order_id} payment_status={payment_status}")
+    return {"status": status, "payment_status": payment_status, "reply_text": f"Cashfree payment status: {payment_status}."}
 
 
 def mark_paid(order_id: int) -> dict:

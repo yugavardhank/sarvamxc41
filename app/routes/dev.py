@@ -14,10 +14,16 @@ from app.pipeline import (
     mark_paid,
     plan_payment,
     start_call,
+    sync_payment,
 )
-from app.services import lists, orders, policy, sarvam, wallet
+from app.services import cashfree, lists, orders, policy, sarvam, wallet
 
 router = APIRouter()
+
+
+@router.get("/api/payment-status")
+def payment_status():
+    return cashfree.payment_configuration()
 
 
 @router.get("/api/customers")
@@ -192,7 +198,8 @@ def dev_mark_paid(order_id: int = Form(...)):
     order = orders.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="order not found")
-    return {**mark_paid(order_id), "order_id": order_id}
+    result = mark_paid(order_id) if cashfree.MOCK_CASHFREE else sync_payment(order_id)
+    return {**result, "order_id": order_id}
 
 
 @router.post("/dev/wallet/topup")

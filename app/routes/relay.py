@@ -23,8 +23,8 @@ from pydantic import BaseModel
 
 from app.config import TOOL_SHARED_SECRET
 from app.db import get_conn, log_event, now
-from app.pipeline import apply_payment_plan, mark_paid, min_pay_now_for, validate_payment_plan
-from app.services import catalog, negotiate, orders, policy
+from app.pipeline import apply_payment_plan, mark_paid, min_pay_now_for, sync_payment, validate_payment_plan
+from app.services import cashfree, catalog, negotiate, orders, policy
 
 
 def _require_tool_secret(x_tokri_secret: str | None = Header(default=None)) -> None:
@@ -231,6 +231,7 @@ def payment_link(body: PaymentLinkRequest):
     return {
         "link_id": orders.get_order(body.order_id)["link_id"],
         "link_url": result.get("link_url"),
+        "sms_notification": result.get("sms_notification"),
         "status": result["status"],
     }
 
@@ -260,6 +261,7 @@ def payment_plan_and_link(body: PlanAndLinkRequest):
         "ok": True, "min_pay_now": validation["min_pay_now"], "pay_now": result["pay_now"],
         "outstanding": result["outstanding_new"], "wallet_applied": result["wallet_applied"],
         "link_url": result.get("link_url"), "status": result["status"], "error": None,
+        "sms_notification": result.get("sms_notification"),
     }
 
 
@@ -269,12 +271,22 @@ class OrderConfirmRequest(BaseModel):
     status: str | None = None
 
 
+@router.post("/payment/sync")
+def payment_sync(body: PaymentLinkRequest):
+    if not orders.get_order(body.order_id):
+        raise HTTPException(status_code=404, detail="order not found")
+    try:
+        return {"order_id": body.order_id, **sync_payment(body.order_id)}
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.post("/order/confirm")
 def order_confirm(body: OrderConfirmRequest):
     order = orders.get_order(body.order_id)
     if not order:
         raise HTTPException(status_code=404, detail="order not found")
-    result = mark_paid(body.order_id)
+    result = mark_paid(body.order_id) if cashfree.MOCK_CASHFREE else sync_payment(body.order_id)
     return {"order_id": body.order_id, **result}
 
 
