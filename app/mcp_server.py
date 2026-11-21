@@ -34,6 +34,7 @@ if _allowed_host:
 @mcp.tool()
 def start_session(phone: str, name: str | None = None, language: str | None = None) -> dict:
     """Call once at the very start of the call to load the customer's profile and catalog."""
+    log_event("real_call_tool", None, f"start_session phone={phone!r} name={name!r} language={language!r}")
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM customers WHERE phone = ?", (phone,)).fetchone()
 
@@ -48,6 +49,7 @@ def start_session(phone: str, name: str | None = None, language: str | None = No
             customer = orders.get_customer(cur.lastrowid)
 
     order_id = orders.create_order(customer["id"])
+    log_event("real_call_started", customer["id"], f"order={order_id} customer={customer['name']}")
     prof = policy.profile(customer)
 
     with get_conn() as conn:
@@ -78,6 +80,7 @@ def price_basket(order_id: int, items: list[dict]) -> dict:
     if not order:
         return {"error": "order not found"}
     customer_id = order["customer_id"]
+    log_event("real_call_tool", customer_id, f"price_basket order={order_id} items={items}")
 
     lines, unmatched, substitutions = [], [], []
     for item in items:
@@ -105,6 +108,7 @@ def price_basket(order_id: int, items: list[dict]) -> dict:
     total = orders.replace_order_items(order_id, lines)
     orders.set_status(order_id, "BASKET_DRAFT")
     updated = orders.get_order(order_id)
+    log_event("real_call_basket", customer_id, f"order={order_id} total={total} lines={len(lines)} unmatched={unmatched}")
 
     return {
         "lines": [{"sku": l["matched_sku"], "name": l["product_name"], "qty": l["qty"], "unit_price": l["unit_price"], "line_total": l["line_total"]} for l in lines],
@@ -122,7 +126,9 @@ def get_offer(order_id: int, objection: str = "price_high") -> dict:
     orders.set_status(order_id, "NEGOTIATING")
     offer = negotiate.next_offer(order_id)
     if not offer:
+        log_event("real_call_tool", order["customer_id"], f"get_offer order={order_id} -> cap_reached")
         return {"offers": [], "cap_reached": True}
+    log_event("real_call_tool", order["customer_id"], f"get_offer order={order_id} -> {offer['description']}")
     return {
         "offers": [{"id": offer["id"], "type": offer["type"], "description": offer["description"], "saving": offer["saving"], "new_total": offer["new_total"]}],
         "cap_reached": False,
@@ -136,6 +142,7 @@ def accept_offer(order_id: int, offer_id: str) -> dict:
     if not offer or offer["id"] != offer_id:
         return {"error": "offer is no longer valid; call get_offer again"}
     updated = negotiate.accept_offer(order_id, offer)
+    log_event("real_call_tool", updated["customer_id"], f"accept_offer order={order_id} new_total={updated['total']}")
     return {"order_id": order_id, "total": updated["total"], "status": updated["status"]}
 
 
@@ -147,8 +154,10 @@ def set_payment_and_link(order_id: int, pay_now: int) -> dict:
         return {"error": "order not found"}
     validation = validate_payment_plan(order_id, pay_now)
     if not validation["ok"]:
+        log_event("real_call_tool", order["customer_id"], f"set_payment_and_link order={order_id} rejected pay_now={pay_now} min={validation['min_pay_now']}")
         return {**validation, "link_url": None, "status": order["status"]}
     result = apply_payment_plan(order_id, pay_now)
+    log_event("real_call_tool", order["customer_id"], f"set_payment_and_link order={order_id} pay_now={pay_now} status={result['status']} link={result.get('link_url')}")
     return {
         "ok": True, "min_pay_now": validation["min_pay_now"], "pay_now": result["pay_now"],
         "outstanding": result["outstanding_new"], "wallet_applied": result["wallet_applied"],

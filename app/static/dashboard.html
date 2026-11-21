@@ -195,6 +195,12 @@
   .chip-sep { color: var(--gridline); margin-right: 10px; }
 
   .saved-lists-panel { margin-top: 14px; }
+
+  .live-activity-panel { margin-bottom: 14px; border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px; background: var(--accent-wash); }
+  .live-activity-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 6px; }
+  .live-activity-row { font-size: 12px; color: var(--text-secondary); padding: 3px 0; border-top: 1px solid var(--border); }
+  .live-activity-row:first-child { border-top: none; }
+  .live-activity-row b { color: var(--text-primary); }
   .saved-list-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 16px; padding: 4px 10px 4px 12px; font-size: 11.5px; margin: 0 6px 6px 0; background: var(--surface-2); }
 
   /* ---------- compact inventory view ---------- */
@@ -241,13 +247,17 @@
         <button class="chip" data-text="save this as my Sunday list">Save as a list</button><span class="chip-sep">·</span>
         <button class="chip" data-text="order from my sunday list">Order from a list</button>
       </div>
+      <div class="live-activity-panel" id="live-activity-panel" style="display:none;">
+        <div class="live-activity-label"><span class="live-dot"></span>Live activity from a real Sarvam call</div>
+        <div id="live-activity-rows"></div>
+      </div>
       <div class="phone-wrap">
         <div class="phone">
           <div class="phone-screen" id="phone-screen">
             <div class="call-idle">
               <div class="caller-avatar">T</div>
               <div class="caller-name">No active call</div>
-              <div class="caller-sub">Call a customer above to begin</div>
+              <div class="caller-sub">Call a customer above to begin, or place a real call from Sarvam - activity will show above once it starts</div>
             </div>
           </div>
         </div>
@@ -677,8 +687,31 @@ function initChips() {
   });
 }
 
+/* ---------- live activity from real Sarvam calls ---------- */
+function timeAgoSeconds(iso) {
+  try { return (Date.now() - new Date(iso).getTime()) / 1000; }
+  catch (e) { return Infinity; }
+}
+
+async function renderLiveActivity() {
+  const panel = document.getElementById('live-activity-panel');
+  const rows = document.getElementById('live-activity-rows');
+  let events;
+  try { events = await fetchJSON('/api/events?limit=100'); }
+  catch (e) { return; }
+
+  const realEvents = events.filter(e => e.kind && e.kind.startsWith('real_call') && timeAgoSeconds(e.ts) < 600);
+  if (realEvents.length === 0) { panel.style.display = 'none'; return; }
+
+  panel.style.display = '';
+  rows.innerHTML = realEvents.slice(0, 8).map(e => {
+    const t = new Date(e.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return `<div class="live-activity-row"><b>${t}</b> - ${escapeHtml(e.detail)}</div>`;
+  }).join('');
+}
+
 async function refreshAll() {
-  await Promise.all([renderCustomers(), renderOrders(), renderInventory()]);
+  await Promise.all([renderCustomers(), renderOrders(), renderInventory(), renderLiveActivity()]);
   document.getElementById('last-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
 }
 
@@ -686,6 +719,7 @@ initTheme();
 initChips();
 refreshAll();
 setInterval(renderOrders, 6000);
+setInterval(renderLiveActivity, 3000);
 </script>
 </body>
 </html>
