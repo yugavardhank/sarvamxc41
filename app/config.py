@@ -12,6 +12,20 @@ def _flag(name: str, default: str = "0") -> bool:
 
 
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+# A *separate* key from SARVAM_API_KEY above: this one is scoped to the
+# Voice Agents (Samvaad) platform and is what the Instant Outbound API's
+# X-API-Key header needs. Generated from Deploy with code -> Generate API key.
+SARVAM_VOICE_AGENTS_API_KEY = os.getenv("SARVAM_VOICE_AGENTS_API_KEY", "")
+# Needed only to trigger a REAL outbound phone call via Sarvam's Instant
+# Outbound API (app/services/sarvam.py:trigger_outbound_call). Get these
+# from the Sarvam dashboard after building+deploying an agent and setting
+# up a phone connection (Deploy -> Phone Numbers).
+SARVAM_ORG_ID = os.getenv("SARVAM_ORG_ID", "")
+SARVAM_WORKSPACE_ID = os.getenv("SARVAM_WORKSPACE_ID", "")
+SARVAM_APP_ID = os.getenv("SARVAM_APP_ID", "")
+SARVAM_APP_VERSION = int(os.getenv("SARVAM_APP_VERSION", "1"))
+SARVAM_CONNECTION_ID = os.getenv("SARVAM_CONNECTION_ID", "")
+SARVAM_AGENT_PHONE_NUMBER = os.getenv("SARVAM_AGENT_PHONE_NUMBER", "")
 CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
 CASHFREE_SECRET = os.getenv("CASHFREE_SECRET", "")
 CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")

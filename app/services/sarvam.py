@@ -5,11 +5,24 @@ import uuid
 
 import httpx
 
-from app.config import MEDIA_DIR, MOCK_SARVAM, SARVAM_API_KEY
+from app.config import (
+    MEDIA_DIR,
+    MOCK_SARVAM,
+    SARVAM_AGENT_PHONE_NUMBER,
+    SARVAM_API_KEY,
+    SARVAM_APP_ID,
+    SARVAM_APP_VERSION,
+    SARVAM_CONNECTION_ID,
+    SARVAM_ORG_ID,
+    SARVAM_VOICE_AGENTS_API_KEY,
+    SARVAM_WORKSPACE_ID,
+)
 from app.services.catalog import ALIASES, list_brands, list_categories, resolve_alias
 
 BASE_URL = "https://api.sarvam.ai"
 HEADERS = {"api-subscription-key": SARVAM_API_KEY}
+
+OUTBOUND_BASE_URL = "https://apps.sarvam.ai/api/outbounds"
 
 CHAT_MODEL = "sarvam-105b"
 STT_MODEL = "saaras:v4"
@@ -116,6 +129,48 @@ def extract_payment_choice(text: str) -> dict:
     if re.search(r"\b(pay\s+)?(all|full|everything)\s+now\b|\bpay\s+now\b|\bpay\s+in\s+full\b", lowered):
         return {"payment_choice": "full_now", "pay_now_amount": pay_now_amount}
     return {"payment_choice": None, "pay_now_amount": pay_now_amount}
+
+
+def outbound_calling_configured() -> bool:
+    return bool(
+        SARVAM_VOICE_AGENTS_API_KEY and SARVAM_ORG_ID and SARVAM_WORKSPACE_ID
+        and SARVAM_APP_ID and SARVAM_CONNECTION_ID and SARVAM_AGENT_PHONE_NUMBER
+    )
+
+
+def trigger_outbound_call(user_phone_number: str, agent_variables: dict, webhook_url: str | None = None) -> dict:
+    """Places a REAL outbound phone call via Sarvam's Instant Outbound API.
+    Always real (no MOCK_SARVAM short-circuit) - there's no point faking a
+    phone ringing. Raises if SARVAM_VOICE_AGENTS_API_KEY or any of
+    ORG_ID/WORKSPACE_ID/APP_ID/CONNECTION_ID/AGENT_PHONE_NUMBER aren't set.
+
+    Returns {"attempt_id": str}.
+    """
+    if not outbound_calling_configured():
+        raise RuntimeError(
+            "Outbound calling isn't configured yet - set SARVAM_VOICE_AGENTS_API_KEY, SARVAM_ORG_ID, "
+            "SARVAM_WORKSPACE_ID, SARVAM_APP_ID, SARVAM_CONNECTION_ID and SARVAM_AGENT_PHONE_NUMBER in .env."
+        )
+
+    body = {
+        "app_config": {
+            "app_id": SARVAM_APP_ID,
+            "app_version": SARVAM_APP_VERSION,
+            "agent_variables": agent_variables,
+            "connection_config": {
+                "connection_id": SARVAM_CONNECTION_ID,
+                "agent_phone_number": SARVAM_AGENT_PHONE_NUMBER,
+            },
+        },
+        "user_config": {"user_phone_number": user_phone_number},
+    }
+    if webhook_url:
+        body["webhook_config"] = {"url": webhook_url}
+
+    url = f"{OUTBOUND_BASE_URL}/v1/orgs/{SARVAM_ORG_ID}/workspaces/{SARVAM_WORKSPACE_ID}/outbounds"
+    resp = httpx.post(url, headers={"X-API-Key": SARVAM_VOICE_AGENTS_API_KEY, "Content-Type": "application/json"}, json=body, timeout=20)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def extract_items(text: str, language_code: str) -> dict:

@@ -320,8 +320,11 @@ async function renderCustomers() {
         <div class="stat">Wallet <b>${fmtMoney(c.wallet_balance)}</b></div>
       </div>
       <div class="btn-row">
-        <button class="btn primary sm" data-call="${c.id}">Call ${escapeHtml(c.name.split(' ')[0])}</button>
+        <button class="btn primary sm" data-call="${c.id}">Simulate call</button>
         <button class="btn ghost sm" data-topup="${c.id}">Top up wallet</button>
+      </div>
+      <div class="btn-row" id="real-call-row-${c.id}" style="display:none;">
+        <button class="btn good sm" data-real-call="${c.id}">Call real phone</button>
       </div>
       <div class="topup-row" id="topup-row-${c.id}" style="display:none;">
         <input type="number" id="topup-amount-${c.id}" placeholder="₹" min="50" step="50" />
@@ -336,6 +339,27 @@ async function renderCustomers() {
     row.style.display = row.style.display === 'none' ? 'flex' : 'none';
   });
   grid.querySelectorAll('[data-send-topup]').forEach(b => b.onclick = () => sendTopup(Number(b.dataset.sendTopup)));
+  grid.querySelectorAll('[data-real-call]').forEach(b => b.onclick = () => triggerRealCall(Number(b.dataset.realCall)));
+
+  try {
+    const status = await fetchJSON('/api/real-call-status');
+    if (status.configured) {
+      customers.forEach(c => {
+        const row = document.getElementById(`real-call-row-${c.id}`);
+        if (row) row.style.display = '';
+      });
+    }
+  } catch (e) { /* endpoint missing in an older build - ignore */ }
+}
+
+async function triggerRealCall(customerId) {
+  try {
+    const result = await fetchJSON('/dev/trigger-real-call', { method: 'POST', body: new URLSearchParams({ customer_id: String(customerId) }) });
+    alert('Call triggered: attempt_id ' + (result.attempt_id || JSON.stringify(result)));
+  } catch (e) {
+    alert('Could not place the call - check the server log and your SARVAM_* env vars.');
+    console.error(e);
+  }
 }
 
 async function sendTopup(customerId) {

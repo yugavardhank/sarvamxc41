@@ -68,6 +68,39 @@ def dev_start_call(customer_id: int = Form(...)):
     return {**result, "audio_url": media_url(audio_path)}
 
 
+@router.get("/api/real-call-status")
+def real_call_status():
+    return {"configured": sarvam.outbound_calling_configured()}
+
+
+@router.post("/dev/trigger-real-call")
+def dev_trigger_real_call(customer_id: int = Form(...)):
+    """Places an ACTUAL outbound phone call via Sarvam's Instant Outbound
+    API - unlike /dev/start-call, this rings a real phone. Requires
+    SARVAM_ORG_ID/WORKSPACE_ID/APP_ID/CONNECTION_ID/AGENT_PHONE_NUMBER in
+    .env (see app/services/sarvam.py:trigger_outbound_call)."""
+    customer = orders.get_customer(customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="customer not found")
+    if not sarvam.outbound_calling_configured():
+        raise HTTPException(
+            status_code=409,
+            detail="Outbound calling not configured - set SARVAM_VOICE_AGENTS_API_KEY, SARVAM_ORG_ID, "
+            "SARVAM_WORKSPACE_ID, SARVAM_APP_ID, SARVAM_CONNECTION_ID, SARVAM_AGENT_PHONE_NUMBER in .env",
+        )
+    # Not passing webhook_config here: the agent's own "log_outcome" On-end
+    # tool (configured in the Sarvam dashboard per README) already POSTs to
+    # /call/outcome with our X-Tokri-Secret header. Sarvam's raw outbound
+    # webhook uses its own Sarvam-Signature scheme instead, which we don't
+    # verify, so wiring both would just double-log the same call.
+    result = sarvam.trigger_outbound_call(
+        user_phone_number=customer["phone"],
+        agent_variables={"customer_name": customer["name"], "customer_id": customer_id},
+    )
+    log_event("real_call_triggered", customer_id, str(result))
+    return result
+
+
 @router.post("/dev/simulate-voice")
 async def dev_simulate_voice(
     order_id: int = Form(...),
