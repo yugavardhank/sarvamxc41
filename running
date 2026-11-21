@@ -1,0 +1,19 @@
+Restart Tokri on the computer hosting the app
+
+1. Open a terminal in this repository.
+2. Stop the running app with Ctrl+C.
+3. Pull the latest code and start the app:
+
+   git pull --ff-only
+   .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+If Git reports conflicting local changes, preserve and resolve them before
+continuing. Do not discard local work.
+
+Keep the existing public tunnel running. On your other device, open the
+public dashboard URL and refresh the page. If you restarted the tunnel,
+use the new URL it prints.
+
+Refreshing the browser does not pull new code from GitHub. The hosting
+computer must pull the latest code first. Restart the app after backend
+or .env changes.
