@@ -390,6 +390,7 @@ async function renderCustomers() {
 async function triggerRealCall(customerId) {
   try {
     const result = await fetchJSON('/dev/trigger-real-call', { method: 'POST', body: new URLSearchParams({ customer_id: String(customerId) }) });
+    await renderLiveActivity();
     alert('Call triggered: attempt_id ' + (result.attempt_id || JSON.stringify(result)));
   } catch (e) {
     alert('Could not place the call - check the server log and your SARVAM_* env vars.');
@@ -710,8 +711,10 @@ async function renderLiveActivity() {
   try { events = await fetchJSON('/api/events?limit=100'); }
   catch (e) { return; }
 
-  const realEvents = events.filter(e => e.kind && e.kind.startsWith('real_call') && timeAgoSeconds(e.ts) < 600);
-  if (realEvents.length === 0) { panel.style.display = 'none'; return; }
+  const recentEvents = events.filter(e => e.kind && e.kind.startsWith('real_call') && timeAgoSeconds(e.ts) < 600);
+  const latestCall = recentEvents.find(e => e.kind === 'real_call_triggered' || e.kind === 'real_call_started');
+  const realEvents = latestCall ? recentEvents.filter(e => e.id >= latestCall.id) : recentEvents;
+  if (realEvents.length === 0) { panel.style.display = 'none'; rows.replaceChildren(); return; }
 
   panel.style.display = '';
   rows.innerHTML = realEvents.slice(0, 8).map(e => {
