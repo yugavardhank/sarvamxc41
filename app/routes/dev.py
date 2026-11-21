@@ -106,9 +106,13 @@ def dev_trigger_real_call(customer_id: int = Form(...)):
     # /call/outcome with our X-Tokri-Secret header. Sarvam's raw outbound
     # webhook uses its own Sarvam-Signature scheme instead, which we don't
     # verify, so wiring both would just double-log the same call.
+    # Only variables actually declared on the agent ("userPhone", "language" -
+    # see the dashboard's Variables tab) can be sent here. customer_name,
+    # order_id etc. are populated DURING the call from start_session's
+    # response, not passed in up front.
     result = sarvam.trigger_outbound_call(
         user_phone_number=customer["phone"],
-        agent_variables={"customer_name": customer["name"], "customer_id": customer_id},
+        agent_variables={"userPhone": customer["phone"], "language": customer["language"] or "en-IN"},
     )
     log_event("real_call_triggered", customer_id, str(result))
     return result

@@ -138,6 +138,20 @@ def outbound_calling_configured() -> bool:
     )
 
 
+def _to_e164(phone: str) -> str:
+    """Sarvam's Instant Outbound API requires E.164 (e.g. +918088328962).
+    Our database stores bare 10-digit Indian numbers - add the +91 country
+    code unless one's already present."""
+    digits = re.sub(r"\D", "", phone or "")
+    if phone.strip().startswith("+"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+91" + digits
+    if len(digits) > 10:
+        return "+" + digits
+    return phone
+
+
 def trigger_outbound_call(user_phone_number: str, agent_variables: dict, webhook_url: str | None = None) -> dict:
     """Places a REAL outbound phone call via Sarvam's Instant Outbound API.
     Always real (no MOCK_SARVAM short-circuit) - there's no point faking a
@@ -159,17 +173,18 @@ def trigger_outbound_call(user_phone_number: str, agent_variables: dict, webhook
             "agent_variables": agent_variables,
             "connection_config": {
                 "connection_id": SARVAM_CONNECTION_ID,
-                "agent_phone_number": SARVAM_AGENT_PHONE_NUMBER,
+                "agent_phone_number": _to_e164(SARVAM_AGENT_PHONE_NUMBER),
             },
         },
-        "user_config": {"user_phone_number": user_phone_number},
+        "user_config": {"user_phone_number": _to_e164(user_phone_number)},
     }
     if webhook_url:
         body["webhook_config"] = {"url": webhook_url}
 
     url = f"{OUTBOUND_BASE_URL}/v1/orgs/{SARVAM_ORG_ID}/workspaces/{SARVAM_WORKSPACE_ID}/outbounds"
     resp = httpx.post(url, headers={"X-API-Key": SARVAM_VOICE_AGENTS_API_KEY, "Content-Type": "application/json"}, json=body, timeout=20)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Sarvam Instant Outbound call failed ({resp.status_code}): {resp.text}")
     return resp.json()
 
 
