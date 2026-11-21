@@ -215,6 +215,8 @@ CUSTOMERS = [
     ("C008", "Vikram Joshi", "9000000008", "vikram.joshi@example.com", "en-IN", 1, 480, 50.0, 20, 500, 500, "COMPLETE", None, "No questions needed"),
     ("C009", "Farhan Ali", "9000000009", None, None, 1, 350, 100.0, 4, 0, 0, "INCOMPLETE", "language", "Ask: Which language are you comfortable in, Hindi, Kannada or English?"),
     ("C010", "Rohit Verma", "9000000010", None, "hi-IN", None, None, None, None, 0, 0, "INCOMPLETE", "orders_90d, on_time_rate, last_order_days, credit_limit_inr, outstanding_inr", "Ask: Have you ordered from us before, and is any payment pending? Until verified, treat as New (prepay only, 2% cap)."),
+    # Added for live testing (not from the original spreadsheet).
+    ("C011", "Madhumitha", "8088328962", None, "en-IN", 0, None, 100.0, None, 0, 0, "COMPLETE", None, "No questions needed"),
 ]
 
 
