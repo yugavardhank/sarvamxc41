@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -28,6 +29,14 @@ def _expiry_iso() -> str:
     return (datetime.now(IST) + timedelta(minutes=LINK_EXPIRY_MINUTES)).strftime("%Y-%m-%dT%H:%M:%S+05:30")
 
 
+def _normalize_phone(phone: str) -> str:
+    """Cashfree wants a bare 10-digit Indian mobile number. Callers (voice
+    agent, test harness) may hand us +91-prefixed, spaced, or hyphenated
+    numbers - strip everything but digits and keep the last 10."""
+    digits = re.sub(r"\D", "", phone or "")
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
 def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id: int | None = None, customer_name: str | None = None) -> dict:
     """Returns {"link_id": str, "link_url": str, "expires_at": str}.
 
@@ -48,16 +57,21 @@ def create_payment_link(amount: int, customer_phone: str, purpose: str, order_id
         "link_amount": amount,
         "link_currency": "INR",
         "link_purpose": purpose,
-        "customer_details": {"customer_phone": customer_phone, "customer_name": customer_name or ""},
+        "customer_details": {"customer_phone": _normalize_phone(customer_phone), "customer_name": customer_name or ""},
         "link_expiry_time": expires_at,
         "link_notes": {"order_id": str(order_id)} if order_id else {},
         "link_partial_payments": False,
+        # Actually deliver the link to the customer's phone, not just return
+        # the URL for us to display - an SMS is the one channel that needs
+        # no extra approval in Cashfree sandbox.
+        "link_notify": {"send_sms": True, "send_email": False},
     }
     if PUBLIC_BASE_URL:
         body["link_meta"] = {"notify_url": f"{PUBLIC_BASE_URL.rstrip('/')}/webhook/cashfree"}
 
     resp = httpx.post(f"{PG_BASE}/links", headers=PG_HEADERS, json=body, timeout=20)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Cashfree create-link failed ({resp.status_code}): {resp.text}")
     response_body = resp.json()
     return {"link_id": response_body["link_id"], "link_url": response_body["link_url"], "expires_at": expires_at}
 

@@ -434,6 +434,9 @@ async function renderOrders() {
     const payCell = o.pay_now != null
       ? `${fmtMoney(o.pay_now)}${o.outstanding_new ? ' / ' + fmtMoney(o.outstanding_new) + ' acct' : ''}`
       : '—';
+    const linkCell = o.link_url
+      ? `<a href="${escapeHtml(o.link_url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:11.5px;">Open payment link</a>`
+      : '';
     const action = o.status === 'AWAITING_PAYMENT'
       ? `<button class="btn good sm" data-mark-paid="${o.id}">Mark paid (demo)</button>`
       : '';
@@ -442,7 +445,7 @@ async function renderOrders() {
         <td>${escapeHtml(o.customer_name)}</td>
         <td><div class="row-items">${itemLines || '—'}</div>${concessionLines ? `<div class="row-concessions">${escapeHtml(concessionLines)}</div>` : ''}</td>
         <td class="amount">${fmtMoney(o.total)}</td>
-        <td class="amount">${payCell}</td>
+        <td class="amount">${payCell}${linkCell ? `<div style="margin-top:3px;">${linkCell}</div>` : ''}</td>
         <td>${badge(STATUS_META[o.status] || STATUS_META.REQUESTED)}</td>
         <td class="time">${fmtTime(o.created_at)}</td>
         <td>${action}</td>
