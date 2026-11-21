@@ -1,0 +1,14 @@
+.env
+.env.*
+.venv/
+.venv-mcp/
+.git/
+.pytest_cache/
+**/__pycache__/
+*.db
+TESTING.md
+tests/
+demo/
+.local-demo/
+app/media/*
+!app/media/.gitkeep

@@ -53,3 +53,40 @@ the same X-Tokri-Secret header used for the voice tools. Orders are confirmed
 only for matching, fully paid INR links. Cashfree's signed webhook continues
 to confirm paid links automatically when PUBLIC_BASE_URL is configured and
 reachable. The sync endpoint is a fallback if the webhook was missed.
+
+Vercel dashboard with the backend running on your computer
+
+This repository uses FastAPI and plain HTML, not Vite. The Vercel entry
+point accepts API_URL, or VITE_API_URL for compatibility, as a server-side
+gateway setting. API_URL takes precedence if both are set.
+
+1. On your backend computer, run the app as usual:
+
+   .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+2. Keep your existing HTTPS tunnel to that app running. If you need one:
+
+   cloudflared tunnel --url http://127.0.0.1:8000
+
+3. In the Vercel project's environment variables, set:
+
+   VITE_API_URL=https://<your-backend-tunnel-hostname>
+
+   Select the environments you use (Production and/or Preview), save the
+   variable, and redeploy. Import this repository from its root with the
+   FastAPI framework preset. Leave Vite build/output overrides unset.
+
+4. Open https://<your-vercel-hostname>/deployment-health to check gateway
+   configuration, and /health to check that the backend is reachable.
+
+The correct local URL is http://127.0.0.1:8000, not http://127.0.0.1.8000.
+A loopback URL works only on the same computer. Vercel requires the public
+HTTPS tunnel URL. Do not use the Vercel dashboard's own URL as API_URL.
+When a temporary tunnel URL changes, update Vercel's variable and redeploy.
+
+The gateway forwards the dashboard, API, media, authentication, and Cashfree
+webhooks to the same backend. Keep the backend computer and tunnel running.
+Cashfree and Sarvam credentials stay in that backend's private .env. This
+keeps SQLite and audio storage on the backend instead of Vercel's temporary
+function filesystem. The separate MCP server and its existing tunnel still
+need to be running for Sarvam voice calls.
