@@ -1,9 +1,11 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import BASE_DIR, MEDIA_DIR
+from app.config import BASE_DIR, MEDIA_DIR, XLSX_PATH
 from app.db import init_db, seed
 from app.routes import cashfree, dev, relay
 
@@ -11,6 +13,11 @@ app = FastAPI(title="Tokri")
 
 init_db()
 seed()
+
+if Path(XLSX_PATH).exists():
+    from app.services import xlsx_sync
+
+    xlsx_sync.sync(XLSX_PATH)
 
 # Relay (or any other external voice orchestrator) calls these endpoints
 # cross-origin from its own hosted canvas, so CORS has to be open here.

@@ -31,6 +31,10 @@ CASHFREE_SECRET = os.getenv("CASHFREE_SECRET", "")
 CASHFREE_ENV = os.getenv("CASHFREE_ENV", "sandbox")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "")
 DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "tokri.db"))
+# The spreadsheet is the live source of truth for products/customers - read
+# and synced into the database at startup and on demand (see
+# app/services/xlsx_sync.py), not copied once into code.
+XLSX_PATH = os.getenv("XLSX_PATH", str(Path.home() / "Downloads" / "tokri_Database.xlsx"))
 # Shared secret the voice-agent tool config must send back on every call to
 # app/routes/relay.py, since that router is reachable from the public
 # internet once PUBLIC_BASE_URL is live. Empty means no check (local dev only).

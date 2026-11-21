@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from app.config import media_url
+from app.config import XLSX_PATH, media_url
 from app.db import get_conn, log_event
 from app.pipeline import (
     accept_offer,
@@ -33,6 +33,19 @@ def list_catalog():
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM products ORDER BY category, price").fetchall()
     return [dict(r) for r in rows]
+
+
+@router.post("/dev/reload-inventory")
+def reload_inventory():
+    """Re-reads tokri_Database.xlsx off disk and upserts it into the live
+    database, so edits to the spreadsheet show up without a server restart."""
+    from pathlib import Path
+
+    if not Path(XLSX_PATH).exists():
+        raise HTTPException(status_code=404, detail=f"spreadsheet not found at {XLSX_PATH}")
+    from app.services import xlsx_sync
+
+    return xlsx_sync.sync(XLSX_PATH)
 
 
 @router.get("/api/orders")
