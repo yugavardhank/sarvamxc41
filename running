@@ -60,6 +60,12 @@ This repository uses FastAPI and plain HTML, not Vite. The Vercel entry
 point accepts API_URL, or VITE_API_URL for compatibility, as a server-side
 gateway setting. API_URL takes precedence if both are set.
 
+The current deployment explicitly sets API_URL in vercel.json to the
+verified backend tunnel. Update that value and redeploy if the tunnel URL
+changes. This value is public routing configuration, not an API credential.
+To manage API_URL only in Vercel's dashboard instead, remove the env.API_URL
+entry from vercel.json and set API_URL to the public HTTPS backend there.
+
 1. On your backend computer, run the app as usual:
 
    .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload

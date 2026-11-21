@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 
 import httpx
@@ -112,3 +113,16 @@ def test_vercel_entrypoint_never_starts_local_database(monkeypatch, system_flag,
         assert response.json()["mode"] == "gateway"
         if expected_status == 503:
             assert client.get("/api/orders").status_code == 503
+
+
+def test_repository_deployment_routes_to_public_backend_before_vite_alias(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    settings = json.loads((root / "vercel.json").read_text())
+    monkeypatch.setenv("API_URL", settings["env"]["API_URL"])
+    monkeypatch.setenv("VITE_API_URL", "http://127.0.0.1.8000")
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
+    spec = importlib.util.spec_from_file_location("configured_deployment_test", root / "index.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with TestClient(module.app) as client:
+        assert client.get("/deployment-health").status_code == 200
