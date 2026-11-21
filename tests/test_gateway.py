@@ -85,10 +85,15 @@ def test_gateway_serves_real_dashboard_and_backend_call_flow(fresh_db, monkeypat
         assert payment.json()["sms_notification"]["status"] == "mocked"
 
 
-def test_vercel_entrypoint_reads_vite_alias_without_starting_local_database(monkeypatch):
-    monkeypatch.setenv("VERCEL", "1")
+@pytest.mark.parametrize("system_flag", ["1", ""])
+@pytest.mark.parametrize("backend_url,expected_status", [
+    ("https://backend.example", 200), ("", 503), ("http://127.0.0.1.8000", 503),
+])
+def test_vercel_entrypoint_never_starts_local_database(monkeypatch, system_flag, backend_url, expected_status):
+    monkeypatch.setenv("VERCEL", system_flag)
     monkeypatch.delenv("API_URL", raising=False)
-    monkeypatch.setenv("VITE_API_URL", "https://backend.example")
+    monkeypatch.setenv("VITE_API_URL", backend_url)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
     import builtins
     original_import = builtins.__import__
 
@@ -102,4 +107,8 @@ def test_vercel_entrypoint_reads_vite_alias_without_starting_local_database(monk
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     with TestClient(module.app) as client:
-        assert client.get("/deployment-health").json() == {"status": "ok", "mode": "gateway", "detail": None}
+        response = client.get("/deployment-health")
+        assert response.status_code == expected_status
+        assert response.json()["mode"] == "gateway"
+        if expected_status == 503:
+            assert client.get("/api/orders").status_code == 503
