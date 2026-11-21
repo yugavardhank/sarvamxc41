@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tokri</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fffefb;
+    --surface-2:      #fbf8f0;
+    --page:           #f3efe4;
+    --text-primary:   #221f17;
+    --text-secondary: #5c5747;
+    --muted:          #8d8673;
+    --border:         rgba(34,31,23,0.13);
+    --gridline:       #e3dcc9;
+    --series-1:       #2a7d4f;
+    --series-1-wash:  rgba(42,125,79,0.10);
+    --good:           #2a7d4f;
+    --warning:        #c47a1f;
+    --critical:       #ad2c2c;
+    --good-text:      #ffffff;
+    --critical-text:  #ffffff;
+    --accent:         #c4571f;
+    --accent-wash:    rgba(196,87,31,0.09);
+    --gold:           #a9790c;
+    --silver:         #6b7280;
+    --shadow: 0 1px 1px rgba(34,31,23,0.04), 0 10px 22px -16px rgba(34,31,23,0.16);
+    --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1c1912;
+      --surface-2:      #211d15;
+      --page:           #13110b;
+      --text-primary:   #f1ecdd;
+      --text-secondary: #c6bea8;
+      --muted:          #8d8673;
+      --border:         rgba(241,236,221,0.11);
+      --gridline:       #302b1f;
+      --series-1:       #4bb881;
+      --series-1-wash:  rgba(75,184,129,0.14);
+      --good:           #4bb881;
+      --warning:        #e0a94a;
+      --critical:       #e07a7a;
+      --good-text:      #0b0b0b;
+      --critical-text:  #0b0b0b;
+      --accent:         #e8936a;
+      --accent-wash:    rgba(232,147,106,0.14);
+      --gold:           #e0bb5c;
+      --silver:         #a8adb5;
+      --shadow: 0 1px 1px rgba(0,0,0,0.3), 0 10px 22px -16px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1c1912;
+    --surface-2:      #211d15;
+    --page:           #13110b;
+    --text-primary:   #f1ecdd;
+    --text-secondary: #c6bea8;
+    --muted:          #8d8673;
+    --border:         rgba(241,236,221,0.11);
+    --gridline:       #302b1f;
+    --series-1:       #4bb881;
+    --series-1-wash:  rgba(75,184,129,0.14);
+    --good:           #4bb881;
+    --warning:        #e0a94a;
+    --critical:       #e07a7a;
+    --good-text:      #0b0b0b;
+    --critical-text:  #0b0b0b;
+    --accent:         #e8936a;
+    --accent-wash:    rgba(232,147,106,0.14);
+    --gold:           #e0bb5c;
+    --silver:         #a8adb5;
+    --shadow: 0 1px 1px rgba(0,0,0,0.3), 0 10px 22px -16px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    padding: 28px 16px 56px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+
+  header.top {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+    margin-bottom: 26px; padding-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .brand-text h1 { font-family: var(--font-serif); font-style: italic; font-size: 25px; font-weight: 600; margin: 0; }
+  .brand-text .tagline { color: var(--text-secondary); font-size: 12.5px; margin-top: 2px; }
+  .top-right { display: flex; align-items: center; gap: 14px; }
+  .live-pill { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: none;
+    color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .icon-btn:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+  .icon-btn svg { width: 14px; height: 14px; }
+
+  section { margin-bottom: 36px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; box-shadow: var(--shadow); }
+  .card-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .empty-state { color: var(--muted); font-size: 13px; padding: 18px 4px; text-align: center; font-style: italic; }
+  .section-title { font-family: var(--font-serif); font-size: 17px; font-weight: 600; font-style: italic; margin: 0 0 4px; }
+  .section-sub { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; max-width: 680px; }
+
+  .customers-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+  .customer-card { flex: 1 1 250px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--surface-2); }
+  .customer-card .name-row { display: flex; align-items: center; gap: 8px; }
+  .customer-card .name { font-family: var(--font-serif); font-size: 15px; font-weight: 600; }
+  .customer-card .meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .customer-card .stats-row { display: flex; gap: 14px; margin-top: 8px; font-size: 11.5px; }
+  .customer-card .stat b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .customer-card .btn-row { margin-top: 10px; }
+
+  .tier-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 10px; }
+  .tier-pill.Gold { background: var(--gold); color: #2a1f00; }
+  .tier-pill.Silver { background: var(--silver); color: #fff; }
+  .tier-pill.New { background: var(--gridline); color: var(--text-secondary); }
+  .churn-flag { font-size: 10.5px; color: var(--accent); font-weight: 600; }
+  .blocked-flag { font-size: 10.5px; color: var(--critical); font-weight: 600; }
+
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+  .tag .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .tag .dot.good { background: var(--good); }
+  .tag .dot.warning { background: var(--warning); }
+  .tag .dot.critical { background: var(--critical); }
+  .tag .dot.neutral { background: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { border-bottom: 1.5px solid var(--text-primary); }
+  th, td { text-align: left; padding: 9px 8px; vertical-align: top; }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 10px; }
+  td.amount { font-variant-numeric: tabular-nums; font-family: var(--font-serif); font-size: 13.5px; }
+  td.time { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .row-items { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .row-concessions { font-size: 11px; color: var(--accent); margin-top: 3px; }
+
+  .btn {
+    border: 1px solid transparent; border-radius: 6px; padding: 7px 14px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn.sm { padding: 5px 10px; font-size: 11.5px; }
+  .btn.primary { background: var(--text-primary); color: var(--surface-1); }
+  .btn.ghost { background: none; color: var(--text-primary); border-color: var(--border); }
+  .btn.good { background: var(--good); color: var(--good-text); }
+  .btn.critical { background: none; color: var(--critical); border-color: var(--critical); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+  .topup-row { display: flex; gap: 6px; margin-top: 8px; }
+  .topup-row input { width: 70px; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--surface-1); color: var(--text-primary); }
+
+  /* ---------- call phone mockup ---------- */
+  .phone-wrap { display: flex; justify-content: center; }
+  .phone { width: 330px; background: linear-gradient(165deg, #2a2a2a, #050505); border-radius: 34px; padding: 9px; box-shadow: var(--shadow); position: relative; }
+  .phone::before { content: ""; position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.18); z-index: 1; }
+  .phone-screen { background: #0e1a12; color: #eef5ee; border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; height: 580px; }
+  .call-idle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+  .call-idle .caller-avatar { width: 86px; height: 86px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 32px; }
+  .call-idle .caller-name { font-size: 17px; font-weight: 600; }
+  .call-idle .caller-sub { font-size: 12px; opacity: 0.7; }
+  .call-live-header { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+  .call-live-header .caller-name { font-size: 13.5px; font-weight: 600; }
+  .call-live-header .call-timer { font-size: 11px; opacity: 0.65; font-variant-numeric: tabular-nums; }
+  .call-messages { flex: 1; overflow-y: auto; padding: 10px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .call-bubble { max-width: 90%; padding: 7px 10px 8px; border-radius: 9px; font-size: 12.5px; line-height: 1.4; }
+  .call-bubble.in { align-self: flex-start; background: rgba(255,255,255,0.08); }
+  .call-bubble.out { align-self: flex-end; background: var(--accent); color: #2a1206; }
+  .call-bubble .btn-row { margin-top: 8px; }
+  .call-input-bar { background: rgba(255,255,255,0.06); padding: 8px; display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
+  .call-input-bar input { flex: 1; border: none; border-radius: 20px; padding: 8px 13px; font-size: 12.5px; background: rgba(255,255,255,0.12); color: #eef5ee; }
+  .call-input-bar input::placeholder { color: rgba(238,245,238,0.5); }
+  .call-input-bar input:focus { outline: none; }
+  .call-send-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .call-end-btn { background: none; border: 1px solid rgba(255,255,255,0.25); color: #eef5ee; border-radius: 24px; padding: 6px 16px; font-size: 11.5px; cursor: pointer; }
+
+  .chip-suggestions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin-bottom: 14px; font-size: 12.5px; }
+  .chip { font: inherit; padding: 3px 0; margin-right: 10px; border: none; border-bottom: 1px solid transparent; background: none; color: var(--text-secondary); cursor: pointer; }
+  .chip:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .chip-sep { color: var(--gridline); margin-right: 10px; }
+
+  .saved-lists-panel { margin-top: 14px; }
+  .saved-list-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 16px; padding: 4px 10px 4px 12px; font-size: 11.5px; margin: 0 6px 6px 0; background: var(--surface-2); }
+
+  footer.note { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 36px; font-family: var(--font-serif); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand-text">
+      <h1>Tokri</h1>
+      <div class="tagline">Your usual order, one phone call away - now with haggling.</div>
+    </div>
+    <div class="top-right">
+      <div class="live-pill"><span class="live-dot"></span><span id="last-updated">connecting…</span></div>
+      <button class="icon-btn" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.4 6.4-.7-.7M6.3 6.3l-.7-.7m12.8 0-.7.7M6.3 17.7l-.7.7"/><circle cx="12" cy="12" r="4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="section-title">Customers due for a call</div>
+    <div class="section-sub">Tier, churn risk and credit come from order history and decide how much the agent can negotiate. The wallet balance is used automatically before any new Cashfree link.</div>
+    <div class="customers-grid" id="customers-grid"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">Live call</div>
+    <div class="section-sub">Type what the customer says. Try "same as last time", a fresh list like "toor dal, rice, oil and atta", "that's too expensive" to negotiate, "save this as my Sunday list", or "order from my Sunday list".</div>
+    <div class="chip-suggestions" id="chip-suggestions" style="display:none;">
+      <button class="chip" data-text="same as last time">Same as last time</button><span class="chip-sep">·</span>
+      <button class="chip" data-text="toor dal tata, rice, oil, and atta">Bigger fresh list</button><span class="chip-sep">·</span>
+      <button class="chip" data-text="that's too expensive">Price objection</button><span class="chip-sep">·</span>
+      <button class="chip" data-text="save this as my Sunday list">Save as a list</button><span class="chip-sep">·</span>
+      <button class="chip" data-text="order from my sunday list">Order from a list</button>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen" id="phone-screen">
+          <div class="call-idle">
+            <div class="caller-avatar">T</div>
+            <div class="caller-name">No active call</div>
+            <div class="caller-sub">Call a customer above to begin</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="saved-lists-panel" id="saved-lists-panel"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-label">Orders</div>
+    <table>
+      <thead><tr><th>Customer</th><th>Items</th><th>Total</th><th>Pay now / Outstanding</th><th>Status</th><th>Time</th><th></th></tr></thead>
+      <tbody id="order-rows"></tbody>
+    </table>
+  </section>
+
+  <footer class="note">Tokri, built on Sarvam (voice, language, intent), Cashfree (payments, wallet) and ready to be driven by Relay. All payments run through Cashfree sandbox.</footer>
+</div>
+
+<script>
+const STATUS_META = {
+  CONFIRMED:          { cls: 'good',     label: 'Confirmed' },
+  ON_ACCOUNT:         { cls: 'good',     label: 'On account' },
+  AWAITING_PAYMENT:   { cls: 'warning',  label: 'Awaiting payment' },
+  NEGOTIATING:        { cls: 'warning',  label: 'Negotiating' },
+  BASKET_DRAFT:       { cls: 'neutral',  label: 'Basket draft' },
+  REQUESTED:          { cls: 'neutral',  label: 'Requested' },
+  CANCELLED:          { cls: 'critical', label: 'Cancelled' },
+  EXPIRED:            { cls: 'critical', label: 'Expired' },
+};
+
+function badge(meta) { return `<span class="tag"><span class="dot ${meta.cls}"></span>${meta.label}</span>`; }
+function fmtMoney(n) { return '₹' + Number(n || 0).toLocaleString('en-IN'); }
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }); }
+  catch (e) { return iso; }
+}
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+async function fetchJSON(url, opts) {
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(url + ' -> ' + res.status);
+  return res.json();
+}
+
+function initTheme() {
+  let saved = null;
+  try { saved = localStorage.getItem('tokri-theme'); } catch (e) {}
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme')
+      || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('tokri-theme', next); } catch (e) {}
+  });
+}
+
+/* ---------- customers ---------- */
+async function renderCustomers() {
+  const grid = document.getElementById('customers-grid');
+  let customers;
+  try { customers = await fetchJSON('/api/customers'); }
+  catch (e) { grid.innerHTML = '<div class="empty-state">Could not load customers.</div>'; return; }
+
+  if (customers.length === 0) { grid.innerHTML = '<div class="empty-state">No customers yet.</div>'; return; }
+
+  grid.innerHTML = customers.map(c => {
+    const p = c.profile;
+    const flags = [
+      p.churn_risk ? '<span class="churn-flag">win-back</span>' : '',
+      p.credit_blocked ? '<span class="blocked-flag">credit blocked</span>' : '',
+    ].filter(Boolean).join(' · ');
+    return `
+    <div class="customer-card">
+      <div class="name-row">
+        <div class="name">${escapeHtml(c.name)}</div>
+        <span class="tier-pill ${p.tier}">${p.tier}</span>
+      </div>
+      <div class="meta">${c.phone} · speaks ${c.language}</div>
+      <div class="meta">${flags || '&nbsp;'}</div>
+      <div class="stats-row">
+        <div class="stat">Cap <b>${p.max_discount_pct}%</b></div>
+        <div class="stat">Credit <b>${fmtMoney(p.credit_available)}</b></div>
+        <div class="stat">Wallet <b>${fmtMoney(c.wallet_balance)}</b></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary sm" data-call="${c.id}">Call ${escapeHtml(c.name.split(' ')[0])}</button>
+        <button class="btn ghost sm" data-topup="${c.id}">Top up wallet</button>
+      </div>
+      <div class="topup-row" id="topup-row-${c.id}" style="display:none;">
+        <input type="number" id="topup-amount-${c.id}" placeholder="₹" min="50" step="50" />
+        <button class="btn good sm" data-send-topup="${c.id}">Send link</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(Number(b.dataset.call)));
+  grid.querySelectorAll('[data-topup]').forEach(b => b.onclick = () => {
+    const row = document.getElementById(`topup-row-${b.dataset.topup}`);
+    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+  });
+  grid.querySelectorAll('[data-send-topup]').forEach(b => b.onclick = () => sendTopup(Number(b.dataset.sendTopup)));
+}
+
+async function sendTopup(customerId) {
+  const input = document.getElementById(`topup-amount-${customerId}`);
+  const amount = Number(input.value);
+  if (!amount || amount <= 0) return;
+  try {
+    const topup = await fetchJSON('/dev/wallet/topup', { method: 'POST', body: new URLSearchParams({ customer_id: String(customerId), amount: String(amount) }) });
+    await fetchJSON('/dev/wallet/mark-paid', { method: 'POST', body: new URLSearchParams({ topup_id: String(topup.topup_id) }) });
+    input.value = '';
+    await renderCustomers();
+  } catch (e) { console.error(e); }
+}
+
+/* ---------- orders ledger ---------- */
+async function renderOrders() {
+  const rows = document.getElementById('order-rows');
+  let all;
+  try { all = await fetchJSON('/api/orders'); }
+  catch (e) { return; }
+
+  if (all.length === 0) {
+    rows.innerHTML = '<tr><td colspan="7" class="empty-state">Nothing yet. Call a customer above.</td></tr>';
+    return;
+  }
+
+  rows.innerHTML = all.map(o => {
+    const itemLines = (o.items || []).map(i => `${i.qty}x ${i.category || i.requested_text}${i.brand ? ' (' + i.brand + ')' : ''}`).join(', ');
+    const concessionLines = (o.concessions || []).map(c => `${c.description}`).join('; ');
+    const payCell = o.pay_now != null
+      ? `${fmtMoney(o.pay_now)}${o.outstanding_new ? ' / ' + fmtMoney(o.outstanding_new) + ' acct' : ''}`
+      : '—';
+    const action = o.status === 'AWAITING_PAYMENT'
+      ? `<button class="btn good sm" data-mark-paid="${o.id}">Mark paid (demo)</button>`
+      : '';
+    return `
+      <tr>
+        <td>${escapeHtml(o.customer_name)}</td>
+        <td><div class="row-items">${itemLines || '—'}</div>${concessionLines ? `<div class="row-concessions">${escapeHtml(concessionLines)}</div>` : ''}</td>
+        <td class="amount">${fmtMoney(o.total)}</td>
+        <td class="amount">${payCell}</td>
+        <td>${badge(STATUS_META[o.status] || STATUS_META.REQUESTED)}</td>
+        <td class="time">${fmtTime(o.created_at)}</td>
+        <td>${action}</td>
+      </tr>`;
+  }).join('');
+
+  rows.querySelectorAll('[data-mark-paid]').forEach(b => b.onclick = () => markPaidFromLedger(Number(b.dataset.markPaid)));
+}
+
+async function markPaidFromLedger(orderId) {
+  try {
+    await fetchJSON('/dev/mark-paid', { method: 'POST', body: new URLSearchParams({ order_id: String(orderId) }) });
+    await Promise.all([renderOrders(), renderCustomers()]);
+  } catch (e) { console.error(e); }
+}
+
+/* ---------- saved lists panel ---------- */
+async function renderSavedLists(customerId) {
+  const panel = document.getElementById('saved-lists-panel');
+  if (!customerId) { panel.innerHTML = ''; return; }
+  let saved;
+  try { saved = await fetchJSON(`/api/lists/${customerId}`); }
+  catch (e) { panel.innerHTML = ''; return; }
+
+  if (saved.length === 0) { panel.innerHTML = ''; return; }
+  panel.innerHTML = '<div class="section-sub">Saved lists for this customer:</div>' + saved.map(l =>
+    `<span class="saved-list-chip" data-reorder="${escapeHtml(l.name)}">${escapeHtml(l.name)} (${l.items.length} items)</span>`
+  ).join('');
+  panel.querySelectorAll('[data-reorder]').forEach(el => {
+    el.style.cursor = 'pointer';
+    el.onclick = () => sendCallTurn(`order from my ${el.dataset.reorder} list`);
+  });
+}
+
+/* ---------- call phone ---------- */
+let currentOrderId = null;
+let currentCustomerId = null;
+let callSeconds = 0;
+let callTimerHandle = null;
+
+function pushCallBubble(dir, innerHtml) {
+  const log = document.getElementById('call-messages');
+  if (!log) return null;
+  const div = document.createElement('div');
+  div.className = 'call-bubble ' + dir;
+  div.innerHTML = innerHtml;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  return div;
+}
+
+function renderLiveCallShell(customerName) {
+  callSeconds = 0;
+  const screen = document.getElementById('phone-screen');
+  screen.innerHTML = `
+    <div class="call-live-header">
+      <div><div class="caller-name">${escapeHtml(customerName)}</div><div class="call-timer" id="call-timer">00:00</div></div>
+      <button class="call-end-btn" id="call-end-btn">End call</button>
+    </div>
+    <div class="call-messages" id="call-messages"></div>
+    <div class="call-input-bar">
+      <input type="text" id="call-input" placeholder="Type what the customer says…" />
+      <button class="call-send-btn" id="call-send" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m0 0 7 7m-7-7-7 7"/></svg>
+      </button>
+    </div>`;
+  document.getElementById('call-end-btn').onclick = endCall;
+  const input = document.getElementById('call-input');
+  const send = () => { const v = input.value; input.value = ''; sendCallTurn(v); };
+  document.getElementById('call-send').onclick = send;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+  if (callTimerHandle) clearInterval(callTimerHandle);
+  callTimerHandle = setInterval(() => {
+    callSeconds += 1;
+    const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+    const s = String(callSeconds % 60).padStart(2, '0');
+    const el = document.getElementById('call-timer');
+    if (el) el.textContent = `${m}:${s}`;
+  }, 1000);
+
+  document.getElementById('chip-suggestions').style.display = '';
+}
+
+function endCall() {
+  currentOrderId = null;
+  currentCustomerId = null;
+  if (callTimerHandle) { clearInterval(callTimerHandle); callTimerHandle = null; }
+  document.getElementById('chip-suggestions').style.display = 'none';
+  document.getElementById('saved-lists-panel').innerHTML = '';
+  document.getElementById('phone-screen').innerHTML = `
+    <div class="call-idle">
+      <div class="caller-avatar">T</div>
+      <div class="caller-name">No active call</div>
+      <div class="caller-sub">Call a customer above to begin</div>
+    </div>`;
+}
+
+async function startCall(customerId) {
+  let result;
+  try { result = await fetchJSON('/dev/start-call', { method: 'POST', body: new URLSearchParams({ customer_id: String(customerId) }) }); }
+  catch (e) { console.error(e); return; }
+
+  currentOrderId = result.order_id;
+  currentCustomerId = customerId;
+  const customers = await fetchJSON('/api/customers');
+  const customer = customers.find(c => c.id === customerId);
+  renderLiveCallShell(customer ? customer.name : 'Customer');
+  pushCallBubble('in', escapeHtml(result.greeting_text));
+  await renderSavedLists(customerId);
+}
+
+function basketActionsHtml() {
+  return `<div class="btn-row">
+    <button class="btn good sm" id="pay-full-btn">Pay in full</button>
+    <button class="btn ghost sm" id="pay-part-btn">Pay part now</button>
+    <button class="btn ghost sm" id="pay-account-btn">On account</button>
+    <button class="btn critical sm" id="cancel-basket-btn">Cancel</button>
+  </div>`;
+}
+
+function offerActionsHtml() {
+  return `<div class="btn-row">
+    <button class="btn good sm" id="accept-offer-btn">Accept offer</button>
+    <button class="btn ghost sm" id="decline-offer-btn">No thanks</button>
+  </div>`;
+}
+
+async function sendCallTurn(text) {
+  if (!text || !text.trim() || !currentOrderId) return;
+  pushCallBubble('out', escapeHtml(text));
+  const thinking = pushCallBubble('in', 'listening…');
+
+  try {
+    const result = await fetchJSON('/dev/simulate-voice', {
+      method: 'POST',
+      body: new URLSearchParams({ order_id: String(currentOrderId), text }),
+    });
+    let html = escapeHtml(result.reply_text);
+    if (result.status === 'NEGOTIATING' && result.offer) {
+      html += offerActionsHtml();
+    } else if (result.status === 'BASKET_DRAFT' && result.total > 0) {
+      html += basketActionsHtml();
+    }
+    thinking.innerHTML = html;
+    wireBubbleActions(thinking);
+    await renderOrders();
+    if (text.toLowerCase().includes('save')) await renderSavedLists(currentCustomerId);
+  } catch (e) {
+    thinking.textContent = 'Something went wrong talking to the backend.';
+    console.error(e);
+  }
+}
+
+function wireBubbleActions(bubbleEl) {
+  const confirmBtn = bubbleEl.querySelector('#accept-offer-btn');
+  if (confirmBtn) confirmBtn.onclick = acceptOffer;
+  const declineBtn = bubbleEl.querySelector('#decline-offer-btn');
+  if (declineBtn) declineBtn.onclick = declineOffer;
+  const payFull = bubbleEl.querySelector('#pay-full-btn');
+  if (payFull) payFull.onclick = () => pay('full_now');
+  const payPart = bubbleEl.querySelector('#pay-part-btn');
+  if (payPart) payPart.onclick = () => pay('part_now');
+  const payAccount = bubbleEl.querySelector('#pay-account-btn');
+  if (payAccount) payAccount.onclick = () => pay('on_account');
+  const cancelBtn = bubbleEl.querySelector('#cancel-basket-btn');
+  if (cancelBtn) cancelBtn.onclick = cancelBasket;
+}
+
+async function acceptOffer() {
+  if (!currentOrderId) return;
+  try {
+    const result = await fetchJSON('/dev/accept-offer', { method: 'POST', body: new URLSearchParams({ order_id: String(currentOrderId) }) });
+    let html = escapeHtml(result.reply_text) + basketActionsHtml();
+    const bubble = pushCallBubble('in', html);
+    wireBubbleActions(bubble);
+    await renderOrders();
+  } catch (e) { console.error(e); }
+}
+
+async function declineOffer() {
+  if (!currentOrderId) return;
+  try {
+    const result = await fetchJSON('/dev/decline-offer', { method: 'POST', body: new URLSearchParams({ order_id: String(currentOrderId) }) });
+    let html = escapeHtml(result.reply_text) + basketActionsHtml();
+    const bubble = pushCallBubble('in', html);
+    wireBubbleActions(bubble);
+  } catch (e) { console.error(e); }
+}
+
+async function pay(paymentChoice) {
+  if (!currentOrderId) return;
+  try {
+    const result = await fetchJSON('/dev/pay', {
+      method: 'POST',
+      body: new URLSearchParams({ order_id: String(currentOrderId), payment_choice: paymentChoice }),
+    });
+    let html = escapeHtml(result.reply_text);
+    if (result.status === 'AWAITING_PAYMENT') {
+      html += `<div class="btn-row"><button class="btn good sm" id="mark-paid-btn">Mark as paid (demo)</button></div>`;
+    }
+    const bubble = pushCallBubble('in', html);
+    const markPaidBtn = bubble.querySelector('#mark-paid-btn');
+    if (markPaidBtn) markPaidBtn.onclick = () => markPaidFromCall(currentOrderId);
+    await Promise.all([renderOrders(), renderCustomers()]);
+  } catch (e) { console.error(e); }
+}
+
+async function cancelBasket() {
+  if (!currentOrderId) return;
+  try {
+    const result = await fetchJSON('/dev/cancel-order', { method: 'POST', body: new URLSearchParams({ order_id: String(currentOrderId) }) });
+    pushCallBubble('in', escapeHtml(result.reply_text));
+    await renderOrders();
+  } catch (e) { console.error(e); }
+}
+
+async function markPaidFromCall(orderId) {
+  try {
+    const result = await fetchJSON('/dev/mark-paid', { method: 'POST', body: new URLSearchParams({ order_id: String(orderId) }) });
+    pushCallBubble('in', escapeHtml(result.reply_text));
+    await Promise.all([renderOrders(), renderCustomers()]);
+  } catch (e) { console.error(e); }
+}
+
+function initChips() {
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => sendCallTurn(chip.dataset.text));
+  });
+}
+
+async function refreshAll() {
+  await Promise.all([renderCustomers(), renderOrders()]);
+  document.getElementById('last-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+}
+
+initTheme();
+initChips();
+refreshAll();
+setInterval(renderOrders, 6000);
+</script>
+</body>
+</html>
