@@ -112,14 +112,19 @@
   .section-title { font-family: var(--font-serif); font-size: 17px; font-weight: 600; font-style: italic; margin: 0 0 4px; }
   .section-sub { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; max-width: 680px; }
 
-  .customers-grid { display: flex; gap: 14px; flex-wrap: wrap; }
-  .customer-card { flex: 1 1 250px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--surface-2); }
+  /* ---------- main two-column layout: customer list | live call ---------- */
+  .main-grid { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } .call-col { position: static !important; } }
+  .call-col { position: sticky; top: 20px; }
+
+  .customers-grid { display: flex; flex-direction: column; gap: 10px; max-height: 760px; overflow-y: auto; padding-right: 2px; }
+  .customer-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--surface-2); }
   .customer-card .name-row { display: flex; align-items: center; gap: 8px; }
-  .customer-card .name { font-family: var(--font-serif); font-size: 15px; font-weight: 600; }
-  .customer-card .meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-  .customer-card .stats-row { display: flex; gap: 14px; margin-top: 8px; font-size: 11.5px; }
+  .customer-card .name { font-family: var(--font-serif); font-size: 14.5px; font-weight: 600; }
+  .customer-card .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .customer-card .stats-row { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; }
   .customer-card .stat b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
-  .customer-card .btn-row { margin-top: 10px; }
+  .customer-card .btn-row { margin-top: 8px; }
 
   .tier-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 10px; }
   .tier-pill.Gold { background: var(--gold); color: #2a1f00; }
@@ -192,6 +197,14 @@
   .saved-lists-panel { margin-top: 14px; }
   .saved-list-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 16px; padding: 4px 10px 4px 12px; font-size: 11.5px; margin: 0 6px 6px 0; background: var(--surface-2); }
 
+  /* ---------- compact inventory view ---------- */
+  .inventory-wrap { max-height: 320px; overflow-y: auto; }
+  .inventory-wrap table { font-size: 12px; }
+  .inventory-wrap th, .inventory-wrap td { padding: 6px 8px; }
+  .stock-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .stock-dot.in { background: var(--good); }
+  .stock-dot.out { background: var(--critical); }
+
   footer.note { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 36px; font-family: var(--font-serif); font-style: italic; }
 </style>
 </head>
@@ -211,34 +224,46 @@
     </div>
   </header>
 
-  <section class="card">
-    <div class="section-title">Customers due for a call</div>
-    <div class="section-sub">Tier, churn risk and credit come from order history and decide how much the agent can negotiate. The wallet balance is used automatically before any new Cashfree link.</div>
-    <div class="customers-grid" id="customers-grid"></div>
-  </section>
-
-  <section class="card">
-    <div class="section-title">Live call</div>
-    <div class="section-sub">Type what the customer says. Try "same as last time", a fresh list like "toor dal, rice, oil and atta", "that's too expensive" to negotiate, "save this as my Sunday list", or "order from my Sunday list".</div>
-    <div class="chip-suggestions" id="chip-suggestions" style="display:none;">
-      <button class="chip" data-text="same as last time">Same as last time</button><span class="chip-sep">·</span>
-      <button class="chip" data-text="toor dal tata, rice, oil, and atta">Bigger fresh list</button><span class="chip-sep">·</span>
-      <button class="chip" data-text="that's too expensive">Price objection</button><span class="chip-sep">·</span>
-      <button class="chip" data-text="save this as my Sunday list">Save as a list</button><span class="chip-sep">·</span>
-      <button class="chip" data-text="order from my sunday list">Order from a list</button>
+  <section class="main-grid">
+    <div class="card">
+      <div class="section-title">Customers due for a call</div>
+      <div class="section-sub">Tier, churn risk and credit decide how much the agent can negotiate. Wallet is used automatically before any new Cashfree link.</div>
+      <div class="customers-grid" id="customers-grid"></div>
     </div>
-    <div class="phone-wrap">
-      <div class="phone">
-        <div class="phone-screen" id="phone-screen">
-          <div class="call-idle">
-            <div class="caller-avatar">T</div>
-            <div class="caller-name">No active call</div>
-            <div class="caller-sub">Call a customer above to begin</div>
+
+    <div class="card call-col">
+      <div class="section-title">Live call</div>
+      <div class="section-sub">Type what the customer says. Try "same as last time", "toor dal, rice, oil and atta", "that's too expensive" to negotiate, "save this as my Sunday list", or "order from my Sunday list". Payment approval messages appear right in this call screen.</div>
+      <div class="chip-suggestions" id="chip-suggestions" style="display:none;">
+        <button class="chip" data-text="same as last time">Same as last time</button><span class="chip-sep">·</span>
+        <button class="chip" data-text="toor dal tata, rice, oil, and atta">Bigger fresh list</button><span class="chip-sep">·</span>
+        <button class="chip" data-text="that's too expensive">Price objection</button><span class="chip-sep">·</span>
+        <button class="chip" data-text="save this as my Sunday list">Save as a list</button><span class="chip-sep">·</span>
+        <button class="chip" data-text="order from my sunday list">Order from a list</button>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="phone-screen" id="phone-screen">
+            <div class="call-idle">
+              <div class="caller-avatar">T</div>
+              <div class="caller-name">No active call</div>
+              <div class="caller-sub">Call a customer above to begin</div>
+            </div>
           </div>
         </div>
       </div>
+      <div class="saved-lists-panel" id="saved-lists-panel"></div>
     </div>
-    <div class="saved-lists-panel" id="saved-lists-panel"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-label">Inventory</div>
+    <div class="inventory-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>Brand</th><th>Price</th><th>Floor</th><th>Stock</th></tr></thead>
+        <tbody id="inventory-rows"></tbody>
+      </table>
+    </div>
   </section>
 
   <section class="card">
@@ -372,6 +397,23 @@ async function sendTopup(customerId) {
     input.value = '';
     await renderCustomers();
   } catch (e) { console.error(e); }
+}
+
+/* ---------- inventory ---------- */
+async function renderInventory() {
+  const rows = document.getElementById('inventory-rows');
+  let products;
+  try { products = await fetchJSON('/api/catalog'); }
+  catch (e) { return; }
+
+  rows.innerHTML = products.map(p => `
+    <tr>
+      <td>${escapeHtml(p.name)}</td>
+      <td>${escapeHtml(p.brand)}</td>
+      <td class="amount">${fmtMoney(p.price)}</td>
+      <td class="amount">${fmtMoney(p.floor_price)}</td>
+      <td><span class="stock-dot ${p.in_stock ? 'in' : 'out'}"></span>${p.in_stock ? 'In stock' : 'Out of stock'}</td>
+    </tr>`).join('');
 }
 
 /* ---------- orders ledger ---------- */
@@ -633,7 +675,7 @@ function initChips() {
 }
 
 async function refreshAll() {
-  await Promise.all([renderCustomers(), renderOrders()]);
+  await Promise.all([renderCustomers(), renderOrders(), renderInventory()]);
   document.getElementById('last-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
 }
 
